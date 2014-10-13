@@ -60,6 +60,12 @@ pouchdb.provider 'pouchdb', ->
   withAllDbsEnabled: ->
     PouchDB.enableAllDbs = true
 
+  #Default cert
+  defaults =
+    AESSecretPassphrase: ""
+    encrypt: (dataValue,cert)-> CryptoJS.AES.encrypt(dataValue, cert);
+    decrypt: (dataValueEncrypted,cert)-> CryptoJS.AES.decrypt(dataValueEncrypted, cert);
+
   $get: ['$q', '$rootScope', '$timeout', ($q, $rootScope, $timeout) ->
 
     qify = (fn) ->
@@ -76,8 +82,30 @@ pouchdb.provider 'pouchdb', ->
         fn.apply this, args
         deferred.promise      
 
+    setDefaultCertificate: (cert)-> defaults.AESSecretPassphrase = cert
     create: (name, options) ->
       db = new PouchDB(name, options)
+
+      #Encrypt Data
+      #Require bower install filter-pouch
+      if db.filter
+        db.AESSecretPassphrase =  options.AESSecretPassphrase ? defaults.AESSecretPassphrase
+
+        db.filter(
+          incoming:(doc)->
+            for key,value of doc
+              if key !=  '_id' && key != '_rev'
+                doc[key] = defaults.encrypt(doc[key],db.AESSecretPassphrase)
+              return doc
+          outgoing:(doc)->
+            for key,value of doc
+              if key !=  '_id' && key != '_rev'
+                doc[key] = defaults.decrypt(doc[key],db.AESSecretPassphrase)
+              return doc
+
+        )
+
+
       id: db.id
       put: qify db.put.bind(db)
       post: qify db.post.bind(db)
