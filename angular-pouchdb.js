@@ -77,10 +77,10 @@ THE SOFTWARE.
     defaults = {
       AESSecretPassphrase: "",
       encrypt: function(dataValue, cert) {
-        return CryptoJS.AES.encrypt(dataValue, cert);
+        return CryptoJS.AES.encrypt(dataValue.toString(), cert).toString();
       },
       decrypt: function(dataValueEncrypted, cert) {
-        return CryptoJS.AES.decrypt(dataValueEncrypted, cert);
+        return CryptoJS.AES.decrypt(dataValueEncrypted, cert).toString(CryptoJS.enc.Utf8);
       }
     };
     return {
@@ -114,29 +114,31 @@ THE SOFTWARE.
               var db, _ref;
               db = new PouchDB(name, options);
               if (db.filter) {
-                db.AESSecretPassphrase = (_ref = options.AESSecretPassphrase) != null ? _ref : defaults.AESSecretPassphrase;
-                db.filter({
-                  incoming: function(doc) {
-                    var key, value;
-                    for (key in doc) {
-                      value = doc[key];
-                      if (key !== '_id' && key !== '_rev') {
-                        doc[key] = defaults.encrypt(doc[key], db.AESSecretPassphrase);
+                db.AESSecretPassphrase = (_ref = options != null ? options.AESSecretPassphrase : void 0) != null ? _ref : defaults.AESSecretPassphrase;
+                if (db.AESSecretPassphrase.length > 0) {
+                  db.filter({
+                    incoming: function(doc) {
+                      var key, value;
+                      for (key in doc) {
+                        value = doc[key];
+                        if (key !== '_id' && key !== '_rev') {
+                          doc[key] = defaults.encrypt(doc[key], db.AESSecretPassphrase);
+                        }
+                      }
+                      return doc;
+                    },
+                    outgoing: function(doc) {
+                      var key, value;
+                      for (key in doc) {
+                        value = doc[key];
+                        if (key !== '_id' && key !== '_rev') {
+                          doc[key] = defaults.decrypt(doc[key], db.AESSecretPassphrase);
+                        }
                       }
                       return doc;
                     }
-                  },
-                  outgoing: function(doc) {
-                    var key, value;
-                    for (key in doc) {
-                      value = doc[key];
-                      if (key !== '_id' && key !== '_rev') {
-                        doc[key] = defaults.decrypt(doc[key], db.AESSecretPassphrase);
-                      }
-                      return doc;
-                    }
-                  }
-                });
+                  });
+                }
               }
               return {
                 id: db.id,

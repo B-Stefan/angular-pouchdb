@@ -54,7 +54,6 @@ exists = (array, cond) ->
   indexOf(array, cond) >= 0
 
 
-
 pouchdb.provider 'pouchdb', ->
 
   withAllDbsEnabled: ->
@@ -63,8 +62,8 @@ pouchdb.provider 'pouchdb', ->
   #Default cert
   defaults =
     AESSecretPassphrase: ""
-    encrypt: (dataValue,cert)-> CryptoJS.AES.encrypt(dataValue, cert);
-    decrypt: (dataValueEncrypted,cert)-> CryptoJS.AES.decrypt(dataValueEncrypted, cert);
+    encrypt: (dataValue,cert)-> CryptoJS.AES.encrypt(dataValue.toString(), cert).toString();
+    decrypt: (dataValueEncrypted,cert)-> CryptoJS.AES.decrypt(dataValueEncrypted, cert).toString(CryptoJS.enc.Utf8);
 
   $get: ['$q', '$rootScope', '$timeout', ($q, $rootScope, $timeout) ->
 
@@ -89,21 +88,22 @@ pouchdb.provider 'pouchdb', ->
       #Encrypt Data
       #Require bower install filter-pouch
       if db.filter
-        db.AESSecretPassphrase =  options.AESSecretPassphrase ? defaults.AESSecretPassphrase
+        db.AESSecretPassphrase =  options?.AESSecretPassphrase ? defaults.AESSecretPassphrase
 
-        db.filter(
-          incoming:(doc)->
-            for key,value of doc
-              if key !=  '_id' && key != '_rev'
-                doc[key] = defaults.encrypt(doc[key],db.AESSecretPassphrase)
+        if db.AESSecretPassphrase.length > 0
+          db.filter(
+            incoming:(doc)->
+              for key,value of doc
+                if key !=  '_id' && key != '_rev'
+                  doc[key] = defaults.encrypt(doc[key],db.AESSecretPassphrase)
               return doc
-          outgoing:(doc)->
-            for key,value of doc
-              if key !=  '_id' && key != '_rev'
-                doc[key] = defaults.decrypt(doc[key],db.AESSecretPassphrase)
+            outgoing:(doc)->
+              for key,value of doc
+                if key !=  '_id' && key != '_rev'
+                  doc[key] = defaults.decrypt(doc[key],db.AESSecretPassphrase)
               return doc
 
-        )
+          )
 
 
       id: db.id

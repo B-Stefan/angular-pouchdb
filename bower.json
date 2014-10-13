@@ -23,7 +23,7 @@
   "dependencies": {
     "angular": "~1.2.3",
     "pouchdb": "~2.0.1",
-    "filter-pouch": "~0.1.2",
+    "filter-pouch": "https://github.com/B-Stefan/filter-pouch#~0.1.3",
     "coderpower-cryptoJS": "~3.1.2"
   },
   "devDependencies": {
