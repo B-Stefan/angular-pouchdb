@@ -80,7 +80,13 @@ THE SOFTWARE.
         return CryptoJS.AES.encrypt(dataValue.toString(), cert).toString();
       },
       decrypt: function(dataValueEncrypted, cert) {
-        return CryptoJS.AES.decrypt(dataValueEncrypted, cert).toString(CryptoJS.enc.Utf8);
+        var e;
+        try {
+          return CryptoJS.AES.decrypt(dataValueEncrypted, cert).toString(CryptoJS.enc.Utf8);
+        } catch (_error) {
+          e = _error;
+          return "Decrypt Err (Not UTF8-Code)";
+        }
       }
     };
     return {
@@ -170,7 +176,13 @@ THE SOFTWARE.
                   from: db.replicate.from.bind(db),
                   sync: db.replicate.sync.bind(db)
                 },
-                destroy: qify(db.destroy.bind(db))
+                destroy: qify(db.destroy.bind(db)),
+                setCert: function(cert) {
+                  return db.AESSecretPassphrase = cert;
+                },
+                getCert: function() {
+                  return db.AESSecretPassphrase;
+                }
               };
             }
           };

@@ -63,7 +63,11 @@ pouchdb.provider 'pouchdb', ->
   defaults =
     AESSecretPassphrase: ""
     encrypt: (dataValue,cert)-> CryptoJS.AES.encrypt(dataValue.toString(), cert).toString();
-    decrypt: (dataValueEncrypted,cert)-> CryptoJS.AES.decrypt(dataValueEncrypted, cert).toString(CryptoJS.enc.Utf8);
+    decrypt: (dataValueEncrypted,cert)->
+      try
+        CryptoJS.AES.decrypt(dataValueEncrypted, cert).toString(CryptoJS.enc.Utf8);
+      catch e
+        return "Decrypt Err (Not UTF8-Code)"
 
   $get: ['$q', '$rootScope', '$timeout', ($q, $rootScope, $timeout) ->
 
@@ -131,6 +135,8 @@ pouchdb.provider 'pouchdb', ->
         from: db.replicate.from.bind(db)
         sync: db.replicate.sync.bind(db)
       destroy: qify db.destroy.bind(db)
+      setCert: (cert)-> db.AESSecretPassphrase = cert
+      getCert: ()->db.AESSecretPassphrase
   ]
 
 # pouch-repeat="name in collection"
