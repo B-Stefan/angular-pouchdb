@@ -117,17 +117,26 @@ THE SOFTWARE.
               return defaults.AESSecretPassphrase = cert;
             },
             create: function(name, options) {
-              var db, _ref;
+              var db, schemes, _ref;
               db = new PouchDB(name, options);
+              schemes = {};
               if (db.filter) {
                 db.AESSecretPassphrase = (_ref = options != null ? options.AESSecretPassphrase : void 0) != null ? _ref : defaults.AESSecretPassphrase;
                 if (db.AESSecretPassphrase.length > 0) {
                   db.filter({
                     incoming: function(doc) {
                       var key, value;
+                      if (!doc.couchDbDataType) {
+                        doc.couchDbDataType = doc.constructor.name;
+                      } else {
+                        if (schemes[doc.couchDbDataType] === void 0) {
+                          throw new Error("Scheme not specified", doc);
+                          return;
+                        }
+                      }
                       for (key in doc) {
                         value = doc[key];
-                        if (key !== '_id' && key !== '_rev') {
+                        if (key !== '_id' && key !== '_rev' && key.substr(0, 1) !== '_' && key !== 'couchDbDataType') {
                           doc[key] = defaults.encrypt(doc[key], db.AESSecretPassphrase);
                         }
                       }
@@ -137,8 +146,13 @@ THE SOFTWARE.
                       var key, value;
                       for (key in doc) {
                         value = doc[key];
-                        if (key !== '_id' && key !== '_rev') {
+                        if (key !== '_id' && key !== '_rev' && key.substr(0, 1) !== '_' && key !== 'couchDbDataType') {
                           doc[key] = defaults.decrypt(doc[key], db.AESSecretPassphrase);
+                        }
+                      }
+                      if (doc.couchDbDataType) {
+                        if (schemes[doc.couchDbDataType] !== void 0) {
+                          return new schemes[doc.couchDbDataType](doc);
                         }
                       }
                       return doc;
@@ -182,6 +196,9 @@ THE SOFTWARE.
                 },
                 getCert: function() {
                   return db.AESSecretPassphrase;
+                },
+                addScheme: function(name, val) {
+                  return schemes[name] = val;
                 }
               };
             }

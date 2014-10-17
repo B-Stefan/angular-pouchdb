@@ -88,6 +88,8 @@ pouchdb.provider 'pouchdb', ->
     setDefaultCertificate: (cert)-> defaults.AESSecretPassphrase = cert
     create: (name, options) ->
       db = new PouchDB(name, options)
+      schemes = {}
+
 
       #Encrypt Data
       #Require bower install filter-pouch
@@ -97,14 +99,29 @@ pouchdb.provider 'pouchdb', ->
         if db.AESSecretPassphrase.length > 0
           db.filter(
             incoming:(doc)->
+              #schme chech
+              if not doc.couchDbDataType
+                doc.couchDbDataType = doc.constructor.name
+              else
+                if schemes[doc.couchDbDataType] == undefined
+                  throw new Error("Scheme not specified", doc)
+                  return
+              #Encryption
               for key,value of doc
-                if key !=  '_id' && key != '_rev'
+                if key !=  '_id' && key != '_rev' && key.substr(0,1) != '_' && key != 'couchDbDataType'
                   doc[key] = defaults.encrypt(doc[key],db.AESSecretPassphrase)
               return doc
+
+
             outgoing:(doc)->
               for key,value of doc
-                if key !=  '_id' && key != '_rev'
+                if key !=  '_id' && key != '_rev' && key.substr(0,1) != '_' && key != 'couchDbDataType'
                   doc[key] = defaults.decrypt(doc[key],db.AESSecretPassphrase)
+
+              if doc.couchDbDataType
+                if schemes[doc.couchDbDataType] != undefined
+                  return new schemes[doc.couchDbDataType](doc)
+
               return doc
 
           )
@@ -137,6 +154,7 @@ pouchdb.provider 'pouchdb', ->
       destroy: qify db.destroy.bind(db)
       setCert: (cert)-> db.AESSecretPassphrase = cert
       getCert: ()->db.AESSecretPassphrase
+      addScheme: (name,val)->schemes[name] = val
   ]
 
 # pouch-repeat="name in collection"
