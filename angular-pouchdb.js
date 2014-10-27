@@ -117,44 +117,52 @@ THE SOFTWARE.
               return defaults.AESSecretPassphrase = cert;
             },
             create: function(name, options) {
-              var db, schemes, _ref;
+              var checkKeyForEncryption, db, decryptData, encryptObject, schemes, _ref;
               db = new PouchDB(name, options);
               schemes = {};
+              checkKeyForEncryption = function(key, value) {
+                return key !== '_id' && key !== '_rev' && key.substr(0, 1) !== '_' && typeof value !== 'function' && key !== 'docType';
+              };
+              encryptObject = function(doc) {
+                var key, value, _ref;
+                if (((_ref = doc._id) != null ? _ref.substr(0, 1) : void 0) === '_') {
+                  return doc;
+                }
+                for (key in doc) {
+                  value = doc[key];
+                  if (checkKeyForEncryption(key, value)) {
+                    doc[key] = defaults.encrypt(doc[key], db.AESSecretPassphrase);
+                  } else if (typeof value === 'function') {
+                    delete doc[key];
+                  }
+                }
+                console.log("encryptObject decryptData for", doc);
+                return doc;
+              };
+              decryptData = function(doc) {
+                var key, value, _ref;
+                if (((_ref = doc._id) != null ? _ref.substr(0, 1) : void 0) === '_') {
+                  return doc;
+                }
+                for (key in doc) {
+                  value = doc[key];
+                  if (checkKeyForEncryption(key, value)) {
+                    doc[key] = defaults.decrypt(doc[key], db.AESSecretPassphrase);
+                  }
+                }
+                console.log("Finisehd decryptData for", doc);
+                return doc;
+              };
               if (db.filter) {
                 db.AESSecretPassphrase = (_ref = options != null ? options.AESSecretPassphrase : void 0) != null ? _ref : defaults.AESSecretPassphrase;
                 if (db.AESSecretPassphrase.length > 0) {
                   db.filter({
                     incoming: function(doc) {
-                      var key, value;
-                      if (!doc.couchDbDataType) {
-                        doc.couchDbDataType = doc.constructor.name;
-                      } else {
-                        if (schemes[doc.couchDbDataType] === void 0) {
-                          throw new Error("Scheme not specified", doc);
-                          return;
-                        }
-                      }
-                      for (key in doc) {
-                        value = doc[key];
-                        if (key !== '_id' && key !== '_rev' && key.substr(0, 1) !== '_' && key !== 'couchDbDataType') {
-                          doc[key] = defaults.encrypt(doc[key], db.AESSecretPassphrase);
-                        }
-                      }
+                      encryptObject(doc);
                       return doc;
                     },
                     outgoing: function(doc) {
-                      var key, value;
-                      for (key in doc) {
-                        value = doc[key];
-                        if (key !== '_id' && key !== '_rev' && key.substr(0, 1) !== '_' && key !== 'couchDbDataType') {
-                          doc[key] = defaults.decrypt(doc[key], db.AESSecretPassphrase);
-                        }
-                      }
-                      if (doc.couchDbDataType) {
-                        if (schemes[doc.couchDbDataType] !== void 0) {
-                          return new schemes[doc.couchDbDataType](doc);
-                        }
-                      }
+                      decryptData(doc);
                       return doc;
                     }
                   });
@@ -184,6 +192,7 @@ THE SOFTWARE.
                 query: qify(db.query.bind(db)),
                 info: qify(db.info.bind(db)),
                 compact: qify(db.compact.bind(db)),
+                viewCleanup: qify(db.viewCleanup.bind(db)),
                 revsDiff: qify(db.revsDiff.bind(db)),
                 replicate: {
                   to: db.replicate.to.bind(db),

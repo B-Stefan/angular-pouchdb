@@ -91,6 +91,33 @@ pouchdb.provider 'pouchdb', ->
       schemes = {}
 
 
+      checkKeyForEncryption= (key,value)-> key !=  '_id' and key != '_rev' and key.substr(0,1) != '_' and typeof value != 'function' and key != 'docType'
+
+      encryptObject = (doc)->
+        if doc._id?.substr(0,1) == '_'
+          return doc
+
+        for key,value of doc
+          if checkKeyForEncryption(key,value)
+            doc[key] = defaults.encrypt(doc[key],db.AESSecretPassphrase)
+          else if typeof value == 'function'
+            delete doc[key];
+        console.log("encryptObject decryptData for",doc)
+        return doc
+
+      decryptData  = (doc)->
+        if doc._id?.substr(0,1) == '_'
+          return doc
+
+        for key,value of doc
+          if checkKeyForEncryption(key,value)
+            doc[key] = defaults.decrypt(doc[key],db.AESSecretPassphrase)
+        console.log("Finisehd decryptData for",doc)
+        return doc
+
+
+
+
       #Encrypt Data
       #Require bower install filter-pouch
       if db.filter
@@ -99,28 +126,11 @@ pouchdb.provider 'pouchdb', ->
         if db.AESSecretPassphrase.length > 0
           db.filter(
             incoming:(doc)->
-              #schme chech
-              if not doc.couchDbDataType
-                doc.couchDbDataType = doc.constructor.name
-              else
-                if schemes[doc.couchDbDataType] == undefined
-                  throw new Error("Scheme not specified", doc)
-                  return
-              #Encryption
-              for key,value of doc
-                if key !=  '_id' && key != '_rev' && key.substr(0,1) != '_' && key != 'couchDbDataType'
-                  doc[key] = defaults.encrypt(doc[key],db.AESSecretPassphrase)
+              encryptObject(doc)
               return doc
 
-
             outgoing:(doc)->
-              for key,value of doc
-                if key !=  '_id' && key != '_rev' && key.substr(0,1) != '_' && key != 'couchDbDataType'
-                  doc[key] = defaults.decrypt(doc[key],db.AESSecretPassphrase)
-
-              if doc.couchDbDataType
-                if schemes[doc.couchDbDataType] != undefined
-                  return new schemes[doc.couchDbDataType](doc)
+              decryptData(doc)
 
               return doc
 
@@ -146,6 +156,7 @@ pouchdb.provider 'pouchdb', ->
       query: qify db.query.bind(db)
       info: qify db.info.bind(db)
       compact: qify db.compact.bind(db)
+      viewCleanup: qify db.viewCleanup.bind(db)
       revsDiff: qify db.revsDiff.bind(db)
       replicate:
         to: db.replicate.to.bind(db)
