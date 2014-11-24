@@ -88,7 +88,6 @@ pouchdb.provider 'pouchdb', ->
     setDefaultCertificate: (cert)-> defaults.AESSecretPassphrase = cert
     create: (name, options) ->
       db = new PouchDB(name, options)
-      schemes = {}
 
 
       checkKeyForEncryption= (key,value)-> key !=  '_id' and key != '_rev' and key.substr(0,1) != '_' and typeof value != 'function' and key != 'docType'
@@ -165,7 +164,7 @@ pouchdb.provider 'pouchdb', ->
       destroy: qify db.destroy.bind(db)
       setCert: (cert)-> db.AESSecretPassphrase = cert
       getCert: ()->db.AESSecretPassphrase
-      addScheme: (name,val)->schemes[name] = val
+
   ]
 
 # pouch-repeat="name in collection"
